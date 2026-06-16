@@ -126,7 +126,7 @@
         <div class="flex flex-col items-center gap-8 lg:mt-8">
             <!-- Status Panel -->
             <div class="bg-white p-6 rounded-2xl shadow-md border-4 border-blue-100 flex flex-col items-center min-w-[250px]">
-                <p class="text-xl text-gray-600 font-bold mb-4 border-b-2 border-gray-100 w-full text-center pb-2">現在輪到：</p>
+                <p class="text-xl text-gray-600 font-bold mb-4 border-b-2 border-gray-100 w-full text-center pb-2">輪到：</p>
                 <div class="h-24 flex items-center justify-center">
                     <p id="current-turn-display" class="text-7xl bounce drop-shadow-lg">🤩</p>
                 </div>
@@ -579,7 +579,7 @@
             const wordsContainer = document.getElementById('challenge-words');
             
             if (type === 'hard') {
-                title.innerText = "🔥 進階任務！";
+                title.innerText = "🔥 大挑戰！";
                 title.className = "text-3xl font-black text-red-600 mb-4 tracking-wide";
                 icon.innerText = "🔥";
                 
@@ -588,7 +588,7 @@
                 let num = Math.floor(Math.random() * 8) + 3; // 3 to 10
                 taskText.innerText = rawTask.replace('X', num);
             } else {
-                title.innerText = "⚡ 體能小挑戰！";
+                title.innerText = "⚡ 小挑戰！";
                 title.className = "text-3xl font-black text-yellow-600 mb-4 tracking-wide";
                 icon.innerText = "⚡";
                 
