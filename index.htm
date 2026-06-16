@@ -43,6 +43,7 @@
             color: #64748b;
         }
         /* Color coding for challenges */
+        .cell-trap { background-color: #e9d5ff; } /* Random trap blocks */
         .cell-mini { background-color: #fef08a; } /* 2 multiples */
         .cell-hard { background-color: #fecaca; } /* 5 multiples */
         
@@ -136,7 +137,7 @@
                 <button id="roll-btn" onclick="takeTurn()" class="bg-gradient-to-b from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white text-3xl font-black py-4 px-8 rounded-full shadow-lg transform transition active:scale-95 border-b-4 border-blue-800 w-full">
                     🎲 擲骰子!
                 </button>
-                <div id="dice-result" class="text-4xl lg:text-5xl font-black text-blue-600 h-16 flex items-center justify-center text-center"></div>
+                <div id="dice-result" class="text-3xl lg:text-4xl font-black text-blue-600 h-16 flex items-center justify-center text-center px-4"></div>
             </div>
         </div>
     </div>
@@ -234,6 +235,21 @@
         let selectedAvatars = [];
         let tempAvailableAvatars = [...availableAvatars];
         let currentChallengeWords = [];
+        let trapBlocks = [];
+
+        // --- Utility Functions ---
+        function generateTrapBlocks() {
+            const candidates = [];
+            // Generate possible blocks: 2 to 63, NOT divisible by 2 or 5
+            for (let i = 2; i <= 63; i++) {
+                if (i % 2 !== 0 && i % 5 !== 0) {
+                    candidates.push(i);
+                }
+            }
+            // Shuffle and randomly select exactly 11 blocks
+            const shuffled = candidates.sort(() => 0.5 - Math.random());
+            trapBlocks = shuffled.slice(0, 11);
+        }
 
         // --- Audio System ---
         function initAudio() {
@@ -347,6 +363,10 @@
                     position: 1
                 });
             }
+            
+            // Randomly select trap blocks for this session
+            generateTrapBlocks(); 
+
             document.getElementById('setup-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
             document.getElementById('game-screen').classList.add('flex');
@@ -374,8 +394,11 @@
                     cell.className = 'cell';
                     cell.id = `cell-${cellNum}`;
                     
-                    // Mark special cells visually
-                    if (cellNum > 1 && cellNum % 5 === 0) {
+                    // Priority check: Trap rule overrides multiple of 2 & 5 visually
+                    if (trapBlocks.includes(cellNum)) {
+                        cell.classList.add('cell-trap');
+                        cell.classList.add('border-2', 'border-purple-400');
+                    } else if (cellNum > 1 && cellNum % 5 === 0) {
                         cell.classList.add('cell-hard');
                         cell.classList.add('border-2', 'border-red-300');
                     } else if (cellNum > 1 && cellNum % 2 === 0) {
@@ -390,7 +413,12 @@
                     cell.appendChild(label);
 
                     // Add markers for challenges
-                    if (cellNum > 1 && cellNum % 5 === 0) {
+                    if (trapBlocks.includes(cellNum)) {
+                        const icon = document.createElement('span');
+                        icon.innerHTML = '🔙';
+                        icon.className = 'absolute bottom-1 right-1 text-xs opacity-50';
+                        cell.appendChild(icon);
+                    } else if (cellNum > 1 && cellNum % 5 === 0) {
                         const icon = document.createElement('span');
                         icon.innerHTML = '🔥';
                         icon.className = 'absolute bottom-1 right-1 text-xs opacity-50';
@@ -441,6 +469,7 @@
             
             btn.classList.add('opacity-50', 'cursor-not-allowed');
             resultDisplay.classList.add('dice-anim');
+            resultDisplay.innerText = '';
             
             // Fake rolling
             let roll = 1;
@@ -492,7 +521,10 @@
         async function checkSpaceEvent(player) {
             const pos = player.position;
             
-            if (pos % 5 === 0) {
+            // Check Trap rule first
+            if (trapBlocks.includes(pos)) {
+                await triggerBackwardTrap(player);
+            } else if (pos % 5 === 0) {
                 // Hard Challenge
                 triggerChallenge(player, 'hard');
             } else if (pos % 2 === 0) {
@@ -502,6 +534,39 @@
                 // Empty space, next turn
                 nextTurn();
             }
+        }
+
+        async function triggerBackwardTrap(player) {
+            playSound('fail');
+            const resultDisplay = document.getElementById('dice-result');
+            resultDisplay.innerText = `踩中陷阱 ${player.position}！後退 4 步！`;
+            resultDisplay.classList.add('text-red-600');
+            
+            await delay(1500);
+            
+            const targetPos = Math.max(1, player.position - 4);
+            
+            // Step by step backward animation
+            while (player.position > targetPos) {
+                player.position--;
+                placeAvatars();
+                playSound('step');
+                
+                const activeAvatar = document.getElementById(`avatar-${player.id}`);
+                if(activeAvatar) {
+                    activeAvatar.classList.remove('bounce');
+                    void activeAvatar.offsetWidth;
+                    activeAvatar.classList.add('bounce');
+                }
+                
+                updateStatusUI();
+                await delay(300);
+            }
+            
+            resultDisplay.classList.remove('text-red-600');
+            
+            // Proceed to the next turn instead of triggering another event to prevent infinite trap loops
+            nextTurn();
         }
 
         function triggerChallenge(player, type) {
